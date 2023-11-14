@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bucket Game</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background-color: #2c3e50; /* Dark background color */
+            color: #ecf0f1; /* Light text color */
+        }
+
+        #bucket {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: url('bucket.png') no-repeat center center; /* Replace with the path to your bucket image */
+            background-size: cover;
+            cursor: none;
+            transition: transform 0.1s; /* Add transition for smooth tilting effect */
+        }
+
+        .ball {
+            position: absolute;
+            width: 60px;
+            height: 80px;
+            background: url('ball.gif') no-repeat center center; /* Replace with the path to your ball image */
+            background-size: cover;
+            border-radius: 0;
+            pointer-events: none;
+        }
+
+        #score {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 20px;
+            color: #2ecc71;
+        }
+
+        /* Game Menu Styles */
+        #gameMenu {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+            background-color: rgba(0, 0, 0, 0.7); /* Darkened background */
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        #gameMenu button {
+            margin: 10px;
+            padding: 10px;
+            font-size: 16px;
+            background-color: #3498db;
+            color: #ecf0f1;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        #gameMenu button:hover {
+            background-color: #2980b9; /* Darker color on hover */
+        }
+
+        #gameMenu button:active {
+            background-color: #1f618d; /* Even darker color on active/click */
+        }
+        /* Add this within the style tag */
+        #durationBar {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 10px;
+            background-color: #27ae60; /* Green color for the duration bar */
+            border-radius: 5px;
+            display: none;
+        }
+        .powerUp {
+    background-color: #9b59b6; /* Purple color for power-up */
+}
+
+        
+
+    </style>
+</head>
+<body>
+
+    <div id="bucket"></div>
+    <!-- Add this within the body tag -->
+    <div id="durationBar"></div>
+    <div id="score">Score: 0</div>
+
+    <!-- Game Menu -->
+    <div id="gameMenu">
+        <button id="startButton">Start Game</button>
+        <button id="resumeButton">Resume</button>
+    </div>
+
+    <script>
+        // Set initial game parameters
+        let score = 0;
+        let ballSpeed = 2;
+        let spawnInterval = 1500; // Milliseconds
+        let gameInterval;
+        let isGamePaused = false;
+
+        // Initialize bucket position and tilt angle
+        const bucket = document.getElementById("bucket");
+        let bucketX = 0;
+        let bucketY = 0;
+        let tiltAngle = 0;
+        let tiltDirection = 1; // 1 for positive, -1 for negative
+
+        // Start the game
+        function startGame() {
+            gameInterval = setInterval(updateGame, 10);
+            createBallInterval();
+        }
+
+        // Update game state
+        function updateGame() {
+            if (!isGamePaused) {
+                moveBucket();
+                moveBalls();
+                checkCollision();
+                updateScore();
+            }
+        }
+
+
+        // Move the bucket based on mouse position and adjust tilt
+        function moveBucket() {
+            document.onmousemove = function (e) {
+                bucketX = e.clientX - bucket.clientWidth / 2;
+                bucketY = e.clientY - bucket.clientHeight / 2;
+
+                // Introduce a slight oscillation to make it more jiggly
+                tiltAngle += tiltDirection * 0.1; // Adjust the factor for intensity
+                if (Math.abs(tiltAngle) > 5) {
+                    tiltDirection *= -1;
+                }
+
+                bucket.style.left = bucketX + "px";
+                bucket.style.top = bucketY + "px";
+                bucket.style.transform = "rotate(" + tiltAngle + "deg)";
+            };
+        }
+            // Add this code for power-ups
+    const powerUpTypes = {
+        BIGGER_BALL: "biggerBall",
+        SLOW_DOWN: "slowDown",
+        DOUBLE_POINTS: "doublePoints"
+    };
+
+    let activePowerUp = null;
+    let powerUpDuration = 5000; // 5 seconds in milliseconds
+    let durationBarInterval;
+
+    // Function to start the duration bar for a power-up
+    function startDurationBar() {
+        const durationBar = document.getElementById("durationBar");
+        durationBar.style.width = "100%";
+
+        clearInterval(durationBarInterval);
+
+        durationBarInterval = setInterval(() => {
+            powerUpDuration -= 100;
+            const percentage = (powerUpDuration / 5000) * 100;
+            durationBar.style.width = `${percentage}%`;
+
+            if (powerUpDuration <= 0) {
+                clearInterval(durationBarInterval);
+                endPowerUp();
+            }
+        }, 100);
+    }
+
+    // Function to end the active power-up
+    function endPowerUp() {
+        activePowerUp = null;
+        powerUpDuration = 5000;
+        const durationBar = document.getElementById("durationBar");
+        durationBar.style.width = "0%";
+    }
+
+    // Function to handle the effects of a power-up
+    function activatePowerUp(type) {
+        switch (type) {
+            case powerUpTypes.BIGGER_BALL:
+                score += 5;
+                break;
+            case powerUpTypes.SLOW_DOWN:
+                ballSpeed /= 2; // Halve the ball speed
+                break;
+            case powerUpTypes.DOUBLE_POINTS:
+                // Add a points multiplier logic in your existing code
+                // For example, set a variable that multiplies the score
+                // in the checkCollision function for a limited time.
+                break;
+            default:
+                break;
+        }
+
+        startDurationBar();
+    }
+        // Create a new falling ball with a short delay
+        function createBall() {
+    const isPowerUp = Math.random() < 0.1; // Adjust the probability as needed
+
+    const ball = document.createElement("div");
+    ball.className = isPowerUp ? getRandomPowerUpClass() : "ball"; // Use a function to get a random power-up class
+    ball.style.left = Math.random() * (window.innerWidth - 30) + "px";
+
+    // Add power-up classes to the power-up element
+    if (isPowerUp) {
+        ball.classList.add("powerUp");
+    }
+
+    document.body.appendChild(ball);
+}
+
+// Function to get a random power-up class
+function getRandomPowerUpClass() {
+    const powerUpClasses = ["biggerBall", "slowDown", "doublePoints"];
+    return powerUpClasses[Math.floor(Math.random() * powerUpClasses.length)];
+}
+
+
+        // Move all falling balls
+        function moveBalls() {
+            const balls = document.getElementsByClassName("ball");
+            for (let i = 0; i < balls.length; i++) {
+                const ball = balls[i];
+                if (ball.offsetTop < window.innerHeight) {
+                    ball.style.top = ball.offsetTop + ballSpeed + "px";
+                } else {
+                    ball.remove();
+                    score -= 1;
+                    checkGameOver(); // Check for game over when a ball reaches the bottom
+                }
+            }
+        }
+
+        // Check for collisions between the top part of the bucket and balls
+        function checkCollision() {
+        const balls = document.getElementsByClassName("ball");
+        for (let i = 0; i < balls.length; i++) {
+            const ball = balls[i];
+            const bucketTop = bucketY;
+            const bucketBottom = bucketY + bucket.clientHeight;
+
+            if (
+                ball.offsetTop + ball.clientHeight > bucketTop &&
+                ball.offsetTop < bucketTop + 10 && // Adjust this value to control the height of the top collection area
+                ball.offsetLeft + ball.clientWidth > bucketX &&
+                ball.offsetLeft < bucketX + bucket.clientWidth
+            ) {
+                if (ball.classList.contains("biggerBall")) {
+                    activatePowerUp(powerUpTypes.BIGGER_BALL);
+                    ball.remove();
+                } else if (ball.classList.contains("slowDown")) {
+                    activatePowerUp(powerUpTypes.SLOW_DOWN);
+                    ball.remove();
+                } else if (ball.classList.contains("doublePoints")) {
+                    activatePowerUp(powerUpTypes.DOUBLE_POINTS);
+                    ball.remove();
+                } else {
+                    setTimeout(createBall, 500); // Delay the creation of the next ball by 500 milliseconds
+                    ball.remove();
+                    score += 1;
+                    updateSpawnRate();
+                }
+            }
+        }
+    }
+
+        // Update the score display
+        function updateScore() {
+            document.getElementById("score").innerText = "Score: " + score;
+        }
+
+        // Update the spawn rate based on the score
+        function updateSpawnRate() {
+            // Adjust the spawn interval based on the score
+            spawnInterval = Math.max(100, 1500 - score * 2); // You can adjust the formula as needed
+            clearInterval(gameInterval);
+            createBallInterval();
+        }
+
+        // Check for game over condition
+        function checkGameOver() {
+            if (score < -1) {
+                clearInterval(gameInterval);
+                alert("Game Over! Your score is " + score);
+                showGameMenu();
+            }
+        }
+
+        // Set interval for creating balls
+        function createBallInterval() {
+            gameInterval = setInterval(createBall, spawnInterval);
+        }
+
+        // Show the game menu
+        function showGameMenu() {
+            const gameMenu = document.getElementById("gameMenu");
+            gameMenu.style.display = "block";
+            isGamePaused = true;
+        }
+
+        // Hide the game menu
+        function hideGameMenu() {
+            const gameMenu = document.getElementById("gameMenu");
+            gameMenu.style.display = "none";
+            isGamePaused = false;
+        }
+
+        // Event listener for the start button
+        document.getElementById("startButton").addEventListener("click", function () {
+            hideGameMenu();
+            startGame();
+        });
+
+        // Event listener for the resume button
+        document.getElementById("resumeButton").addEventListener("click", function () {
+            hideGameMenu();
+            isGamePaused = false;
+        });
+
+        // Event listener for the escape key to pause the game
+        document.addEventListener("keydown", function (event) {
+            if (event.key === "Escape") {
+                showGameMenu();
+            }
+        });
+
+        // Start the game when the page loads
+        showGameMenu();
+    </script>
+
+</body>
+</html>
