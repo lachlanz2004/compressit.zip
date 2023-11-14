@@ -292,7 +292,7 @@ function getRandomPowerUpClass() {
         // Update the spawn rate based on the score
         function updateSpawnRate() {
             // Adjust the spawn interval based on the score
-            spawnInterval = Math.max(100, 1500 - score * 5); // You can adjust the formula as needed
+            spawnInterval = Math.max(100, 1500 - score * 3); // You can adjust the formula as needed
             clearInterval(gameInterval);
             createBallInterval();
         }
